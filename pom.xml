@@ -1,0 +1,36 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.optl</groupId>
+  <artifactId>trace</artifactId>
+  <version>1.0</version>
+  <name>optl-tracer</name>
+  <description>tracer</description>
+  
+  <properties>
+     <otel-version>2.1</otel-version>
+  </properties>
+  
+<dependencies>
+    <!-- OpenTelemetry API -->
+    <dependency>
+        <groupId>io.opentelemetry</groupId>
+        <artifactId>opentelemetry-api</artifactId>
+        <version>1.46.0</version>
+    </dependency>
+    
+    <!-- OpenTelemetry SDK -->
+    <dependency>
+        <groupId>io.opentelemetry</groupId>
+        <artifactId>opentelemetry-sdk</artifactId>
+        <version>1.46.0</version>
+    </dependency>
+    
+    <!-- Exporter (e.g., OTLP for sending telemetry data) -->
+    <dependency>
+        <groupId>io.opentelemetry</groupId>
+        <artifactId>opentelemetry-exporter-otlp</artifactId>
+        <version>1.46.0</version>
+    </dependency>
+</dependencies>  
+  
+</project>
