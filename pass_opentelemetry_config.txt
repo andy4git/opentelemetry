@@ -1,0 +1,77 @@
+When using the OpenTelemetry Java Agent, it's generally recommended to pass configuration settings (such as environment variables) at the time the application is launched because the agent initializes early in the application's lifecycle. However, there are ways to dynamically update certain configurations after the application has started:
+
+1. Retrieve and Apply Configuration Before Application Launch
+Use a wrapper script (like a shell script) to retrieve the necessary token or configuration from the remote service before starting your application. Set the retrieved values as environment variables and then launch your application.
+Example script:
+bash
+Copy
+# Retrieve token from remote service
+TOKEN=$(curl -s http://example.com/get-token)
+export OTEL_EXPORTER_JAEGER_AUTH_TOKEN=$TOKEN
+
+# Start the Java application with OpenTelemetry
+java -javaagent:path/to/opentelemetry-javaagent.jar -jar my-app.jar
+2. Use System Properties or Environment Variables
+OpenTelemetry supports configuration via both environment variables and system properties. If you cannot pass the token as an environment variable during the initial launch, consider using system properties that you can set dynamically before agent initialization.
+Example:
+
+bash
+Copy
+java -javaagent:path/to/opentelemetry-javaagent.jar \
+    -Dotel.exporter.jaeger.auth.token=$TOKEN \
+    -jar my-app.jar
+3. Programmatic Configuration Using SDK (Instead of the Java Agent)
+If you need more flexibility, consider using OpenTelemetry SDK directly instead of the agent. This allows you to dynamically fetch the token or configuration during runtime and programmatically configure the tracer/exporter.
+Example:
+java
+Copy
+String token = fetchTokenFromRemoteService();
+JaegerGrpcSpanExporter exporter = JaegerGrpcSpanExporter.builder()
+    .setEndpoint("http://jaeger-collector:14250")
+    .addHeader("Authorization", "Bearer " + token)
+    .build();
+
+SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
+    .addSpanProcessor(SimpleSpanProcessor.create(exporter))
+    .build();
+
+OpenTelemetrySdk openTelemetry = OpenTelemetrySdk.builder()
+    .setTracerProvider(tracerProvider)
+    .buildAndRegisterGlobal();
+4. Use a Token Refresh Mechanism
+If the token changes frequently, implement a refresh mechanism in your application or via a custom SpanExporter. You can extend existing exporters (like Jaeger) to support dynamic token retrieval.
+Example:
+
+java
+Copy
+class DynamicTokenJaegerExporter extends JaegerGrpcSpanExporter {
+    @Override
+    protected Map<String, String> getHeaders() {
+        String token = fetchTokenFromRemoteService();
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Authorization", "Bearer " + token);
+        return headers;
+    }
+}
+5. Environment Configuration in Kubernetes
+Since you're using Kubernetes, you can use an init container to fetch the token and inject it as an environment variable or a file that the application can read.
+Example YAML for init container:
+yaml
+Copy
+initContainers:
+  - name: fetch-token
+    image: curlimages/curl:latest
+    command: ["sh", "-c", "curl -s http://example.com/get-token > /config/token"]
+    volumeMounts:
+      - name: config-volume
+        mountPath: /config
+containers:
+  - name: my-app
+    image: my-app:latest
+    env:
+      - name: OTEL_EXPORTER_JAEGER_AUTH_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: jaeger-token
+            key: token
+By combining these approaches, you can handle dynamic configuration effectively while using the OpenTelemetry Java Agent.
