@@ -1,0 +1,76 @@
+package com.ccb.ob.te.pkc;
+
+import javax.crypto.*;
+import javax.crypto.spec.*;
+import java.security.*;
+import java.security.spec.*;
+import java.util.Base64;
+
+public class AESGCMEncryption {
+	
+    private static final int KEY_SIZE = 256; // AES-256
+    private static final int IV_SIZE = 12;   // Recommended IV size for GCM
+    private static final int TAG_SIZE = 128; // Authentication tag size
+
+    public static String encrypt(String plaintext, String password) throws Exception {
+        byte[] iv = generateIV(); // Generate a random IV
+        SecretKey key = deriveKey(password, iv);
+
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(TAG_SIZE, iv);
+        cipher.init(Cipher.ENCRYPT_MODE, key, gcmSpec);
+
+        byte[] ciphertext = cipher.doFinal(plaintext.getBytes());
+
+        // Combine IV and ciphertext
+        byte[] encryptedData = new byte[iv.length + ciphertext.length];
+        System.arraycopy(iv, 0, encryptedData, 0, iv.length);
+        System.arraycopy(ciphertext, 0, encryptedData, iv.length, ciphertext.length);
+
+        return Base64.getEncoder().encodeToString(encryptedData);
+    }
+
+    public static String decrypt(String encryptedData, String password) throws Exception {
+        byte[] decodedData = Base64.getDecoder().decode(encryptedData);
+
+        // Extract IV
+        byte[] iv = new byte[IV_SIZE];
+        System.arraycopy(decodedData, 0, iv, 0, IV_SIZE);
+
+        // Extract ciphertext
+        byte[] ciphertext = new byte[decodedData.length - IV_SIZE];
+        System.arraycopy(decodedData, IV_SIZE, ciphertext, 0, ciphertext.length);
+
+        SecretKey key = deriveKey(password, iv);
+
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(TAG_SIZE, iv);
+        cipher.init(Cipher.DECRYPT_MODE, key, gcmSpec);
+
+        byte[] decryptedText = cipher.doFinal(ciphertext);
+        return new String(decryptedText);
+    }
+
+    private static SecretKey deriveKey(String password, byte[] salt) throws Exception {
+        SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+        KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 65536, KEY_SIZE);
+        return new SecretKeySpec(factory.generateSecret(spec).getEncoded(), "AES");
+    }
+
+    private static byte[] generateIV() {
+        byte[] iv = new byte[IV_SIZE];
+        new SecureRandom().nextBytes(iv);
+        return iv;
+    }
+
+    public static void main(String[] args) throws Exception {
+        String password = "abc";
+        String plaintext = "Hello, AES-GCM in Java 21!";
+
+        String encryptedText = encrypt(plaintext, password);
+        System.out.println("Encrypted: " + encryptedText);
+
+        String decryptedText = decrypt(encryptedText, password);
+        System.out.println("Decrypted: " + decryptedText);
+    }
+}
